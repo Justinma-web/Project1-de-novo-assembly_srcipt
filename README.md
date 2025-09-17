@@ -1,2 +1,2 @@
 # de-novo-assembly_1
-runDRAP separately -> merge all assemblies
+Strategy 1: runDRAP separately -> merge all assemblies
