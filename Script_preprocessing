@@ -1,0 +1,23 @@
+#
+
+##preprocessing (trim_galore and kraken2)
+
+#trim_galore
+trim_galore \
+--cores 10 \
+--fastqc \
+--illumina \
+--length 70 \
+--quality 30 \
+--paired \
+10B_1.fastq.gz  10B_2.fastq.gz \
+
+#kraken2
+kraken2 \
+--db kraken2_justin \
+--threads 8 \
+--unclassified-out uf10B#.fq \
+--report 10B_test_report \
+--confidence 0.25 \
+--paired \
+--gzip-compressed 10B_1_val_1.fq.gz 10B_2_val_2.fq.gz \
