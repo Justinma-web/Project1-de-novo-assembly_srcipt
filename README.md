@@ -1,3 +1,5 @@
+#Summary of all strategies' script in this project. 
+
 # de-novo-assembly_1
 Strategy 1: runDRAP separately -> merge all assemblies
 
