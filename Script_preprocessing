@@ -2,7 +2,8 @@
 
 ##preprocessing (trim_galore and kraken2)
 
-#trim_galore
+#trim_galore, "--paired" is very important if following steps treat sequences in a paired-read way. 
+#the last line is the file's name; the number of cores can be changed, but 10 seems to be an optimal choice based on trim_galore's instruction. 
 trim_galore \
 --cores 10 \
 --fastqc \
