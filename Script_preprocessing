@@ -1,4 +1,4 @@
-#
+#!/bin/bash
 
 ##preprocessing (trim_galore and kraken2)
 
