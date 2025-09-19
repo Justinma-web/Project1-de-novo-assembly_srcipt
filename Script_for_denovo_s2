@@ -1,0 +1,67 @@
+#!/bin/bash
+
+#This is used in my docker container
+
+##PATH
+#DRAP install directory in the Docker container
+cd /usr/local/src/drap
+
+#DRAP configuration PATH
+cd /usr/local/src/drap/cfg
+
+#Edit configuration (change "local_cpu" and "n_cpu")
+vi /usr/local/src/drap/cfg/drap.cfg
+
+#Trimmed and filtered by Kraken2 sequence PATH
+cd /mnt/data/pri_data/kraken
+
+#DRAP working path
+cd /mnt/data/out_drap_s2
+
+##Step 1: merge forward and reverse reads (1 and 2), I use 15 cores here (-j15), you can change it based on your server
+#remember to check the format of output, 
+cd /mnt/data/pri_data/kraken && pwd && ls
+cat *_1.fq.gz > merged_1.fq.gz
+cat *_2.fq.gz > merged_2.fq.gz
+
+##Step 2: run DRAP for denovo assembly
+cd /usr/local/src/drap && pwd && ls
+
+#Write script for further modification (change CPU number for faster speed if you want to, OPTION)
+runDrap \
+  --outdir /mnt/data/out_drap_s2 \
+  --R1 /mnt/data/pri_data/kraken/merged_1.fq.gz \
+  --R2 /mnt/data/pri_data/kraken/merged_2.fq.gz \
+  --dbg trinity \
+  --no-trim \
+  --norm-mem 200 \
+  --dbg-mem 200 \
+  --discardN \
+  --coverage 0,0.5,1 \
+  --no-rate \
+  --write
+
+###ONLY DO THIS IF YOU RUN THIS FOR THE FIRST TIME###
+#Edit the CPU number used in tgicl (It always fails when more than 6 CPUs are used here). This is a tool used in step 5. 
+vi /usr/local/src/drap/bin/runAssembly.sh
+
+# Change the second line into following command
+tgicl all_dbg.fa -c 6 -l 60 -p 96 -s 100000
+###
+
+
+#runDrap (de novo assembly)
+runDrap \
+  --outdir /mnt/data/out_drap_s2 \
+  --R1 /mnt/data/pri_data/kraken/merged_1.fq.gz \
+  --R2 /mnt/data/pri_data/kraken/merged_2.fq.gz \
+  --dbg trinity \
+  --no-trim \
+  --norm-mem 200 \
+  --dbg-mem 200 \
+  --discardN \
+  --coverage 0,0.5,1 \
+  --no-rate \
+  --run
+
+##Step 3: transcriptome quality assessment
