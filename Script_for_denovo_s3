@@ -41,8 +41,27 @@ vi /usr/local/src/drap/bin/runAssembly.sh
 tgicl all_dbg.fa -c 6 -l 60 -p 96 -s 100000
 ###
 
+
+#######auto_drap.sh######
 #####Following script can be saved as a shell script to let it run automatically (to better arrange time)###
-#runDrap for brain samples
+#!/bin/bash
+set -euo pipefail
+
+# Function to run a command and check for errors
+run_step() {
+    local step_name="$1"
+    shift
+    echo "=== Starting: $step_name ==="
+    if "$@"; then
+        echo "=== $step_name completed successfully ==="
+    else
+        echo "!!! ERROR: $step_name failed. Stopping pipeline. !!!"
+        exit 1
+    fi
+}
+
+# Step 1: runDrap for brain samples
+run_step "runDrap (brain)" \
 runDrap \
   --outdir /mnt/data/out_drap_s3_b \
   --R1 /mnt/data/pri_data/kraken/merged_B_1.fq.gz \
@@ -53,9 +72,10 @@ runDrap \
   --dbg-mem 200 \
   --discardN \
   --coverage 0,0.5,1 \
-  --no-rate \
+  --no-rate
 
-#runDrap for skin samples
+# Step 2: runDrap for skin samples
+run_step "runDrap (skin)" \
 runDrap \
   --outdir /mnt/data/out_drap_s3_r \
   --R1 /mnt/data/pri_data/kraken/merged_R_1.fq.gz \
@@ -66,14 +86,17 @@ runDrap \
   --dbg-mem 200 \
   --discardN \
   --coverage 0,0.5,1 \
-  --no-rate \
+  --no-rate
 
-##Step 3: merge 2 de novo assemblies
-#runMeta to merge both samples (brain and skin transcriptomes)
+# Step 3: runMeta to merge both assemblies
+run_step "runMeta (merge brain + skin)" \
 runMeta \
---drap-dirs /mnt/data/out_drap_s3_b,/mnt/data/out_drap_s3_r \
---outdir /mnt/data/out_drap/meta_s2 \
---coverage 0,0.5,1
-########
+  --drap-dirs /mnt/data/out_drap_s3_b,/mnt/data/out_drap_s3_r \
+  --outdir /mnt/data/out_drap/meta_s3 \
+  --coverage 0,0.5,1
+
+echo "=== All steps completed successfully! ==="
+############
+
 
 
