@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+##salmon##
+WORKDIR=/home/jade/1_sandsmelt/rundrap/out_drap_s2
+READ1=$WORKDIR/merged_1.norm.fq.gz
+READ2=$WORKDIR/merged_2.norm.fq.gz
+
+# Transcriptomes
+TX0=$WORKDIR/transcripts_fpkm_0.fa
+TX05=$WORKDIR/transcripts_fpkm_0.5.fa
+
+# Build indices
+salmon index --index $WORKDIR/salmon_index_fpkm0   --transcripts $TX0
+salmon index --index $WORKDIR/salmon_index_fpkm05  --transcripts $TX05
+
+# Quantify expression
+salmon quant --index $WORKDIR/salmon_index_fpkm0  --libType A \
+    --dumpEq --hardFilter --skipQuant \
+    -1 $READ1 -2 $READ2 \
+    --output $WORKDIR/salmon_quant_fpkm0
+
+salmon quant --index $WORKDIR/salmon_index_fpkm05 --libType A \
+    --dumpEq --hardFilter --skipQuant \
+    -1 $READ1 -2 $READ2 \
+    --output $WORKDIR/salmon_quant_fpkm05
+
+##corset##
+
