@@ -26,4 +26,15 @@ salmon quant --index $WORKDIR/salmon_index_fpkm05 --libType A \
     --output $WORKDIR/salmon_quant_fpkm05
 
 ##corset##
+# Unzip the Salmon equivalence class files
+gunzip -c /home/jade/1_sandsmelt/rundrap/out_drap_s2/salmon_quant_fpkm0/aux_info/eq_classes.txt.gz \
+  > /home/jade/1_sandsmelt/rundrap/out_drap_s2/salmon_quant_fpkm0/aux_info/eq_classes.txt
 
+gunzip -c /home/jade/1_sandsmelt/rundrap/out_drap_s2/salmon_quant_fpkm05/aux_info/eq_classes.txt.gz \
+  > /home/jade/1_sandsmelt/rundrap/out_drap_s2/salmon_quant_fpkm05/aux_info/eq_classes.txt
+
+# Run Corset on each transcriptome
+cd /home/jade/1_sandsmelt/rundrap/out_drap_s2
+
+corset -i salmon_eq_classes -p corset_fpkm0  salmon_quant_fpkm0/aux_info/eq_classes.txt
+corset -i salmon_eq_classes -p corset_fpkm05 salmon_quant_fpkm05/aux_info/eq_classes.txt
