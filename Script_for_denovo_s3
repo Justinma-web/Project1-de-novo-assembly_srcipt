@@ -92,7 +92,7 @@ runDrap \
 run_step "runMeta (merge brain + skin)" \
 runMeta \
   --drap-dirs /mnt/data/out_drap_s3_b,/mnt/data/out_drap_s3_r \
-  --outdir /mnt/data/out_drap/meta_s3 \
+  --outdir /mnt/data/meta_s3 \
   --coverage 0,0.5,1
 
 echo "=== All steps completed successfully! ==="
