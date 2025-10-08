@@ -1,0 +1,59 @@
+#!/bin/bash
+set -e
+
+# Base paths
+WORKDIR=/home/jade/1_sandsmelt/rundrap/out_drap_s1
+TXDIR=$WORKDIR/meta_BR/d-cov_filter
+
+# Transcriptomes
+TX0=$TXDIR/transcripts_fpkm_0.fa
+TX1=$TXDIR/transcripts_fpkm_1.fa
+
+# Index directories
+IDX0=$WORKDIR/salmon_index_fpkm0
+IDX1=$WORKDIR/salmon_index_fpkm1
+
+# Build Salmon indices (once per transcriptome)
+salmon index --index $IDX0 --transcripts $TX0
+salmon index --index $IDX1 --transcripts $TX1
+
+# Sample directories (all B and R folders)
+SAMPLES="10B 11B 12B 13B 14B 16B 17B 18B 2B 5B 6B 7B 8B 9B \
+         10R 11R 12R 13R 14R 16R 17R 18R 2R 5R 6R 7R 8R 9R"
+
+# Run Salmon quant for each sample and transcriptome
+for S in $SAMPLES; do
+    R1=$WORKDIR/$S/uf${S}_1.norm.fq.gz
+    R2=$WORKDIR/$S/uf${S}_2.norm.fq.gz
+
+    # Output directories
+    OUT0=$WORKDIR/${S}_quant_fpkm0
+    OUT1=$WORKDIR/${S}_quant_fpkm1
+
+    echo "Running Salmon for sample $S on fpkm=0 transcriptome..."
+    salmon quant --index $IDX0 --libType A \
+        --dumpEq --hardFilter --skipQuant \
+        -1 $R1 -2 $R2 \
+        --output $OUT0
+
+    echo "Running Salmon for sample $S on fpkm=1 transcriptome..."
+    salmon quant --index $IDX1 --libType A \
+        --dumpEq --hardFilter --skipQuant \
+        -1 $R1 -2 $R2 \
+        --output $OUT1
+
+    # Unzip eq_classes.txt.gz
+    gunzip -c $OUT0/aux_info/eq_classes.txt.gz > $OUT0/aux_info/eq_classes.txt
+    gunzip -c $OUT1/aux_info/eq_classes.txt.gz > $OUT1/aux_info/eq_classes.txt
+done
+
+## Collect all eq_classes.txt for Corset
+EQ0=$(ls $WORKDIR/*_quant_fpkm0/aux_info/eq_classes.txt)
+EQ1=$(ls $WORKDIR/*_quant_fpkm1/aux_info/eq_classes.txt)
+
+# Run Corset for each transcriptome
+echo "Running Corset on fpkm=0 transcriptome..."
+corset -i salmon_eq_classes -p corset_fpkm0 $EQ0
+
+echo "Running Corset on fpkm=1 transcriptome..."
+corset -i salmon_eq_classes -p corset_fpkm1 $EQ1
