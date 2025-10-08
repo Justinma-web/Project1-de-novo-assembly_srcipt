@@ -18,8 +18,8 @@ salmon index --index $IDX0 --transcripts $TX0
 salmon index --index $IDX1 --transcripts $TX1
 
 # Sample directories (all B and R folders)
-SAMPLES="10B 11B 12B 13B 14B 16B 17B 18B 2B 5B 6B 7B 8B 9B \
-         10R 11R 12R 13R 14R 16R 17R 18R 2R 5R 6R 7R 8R 9R"
+SAMPLES="2B 2R 5B 5R 6B 6R 7B 7R 8B 8R 9B 9R 10B 10R \
+         11B 11R 12B 12R 13B 13R 14B 14R 16B 16R 17B 17R 18B 18R"
 
 # Run Salmon quant for each sample and transcriptome
 for S in $SAMPLES; do
@@ -48,12 +48,19 @@ for S in $SAMPLES; do
 done
 
 ## Collect all eq_classes.txt for Corset
-EQ0=$(ls $WORKDIR/*_quant_fpkm0/aux_info/eq_classes.txt)
-EQ1=$(ls $WORKDIR/*_quant_fpkm1/aux_info/eq_classes.txt)
+EQ0=$(ls $WORKDIR/*_quant_fpkm0/aux_info/eq_classes.txt | sort)
+EQ1=$(ls $WORKDIR/*_quant_fpkm1/aux_info/eq_classes.txt | sort)
+
+# Define sample names (must match order of $EQ0/$EQ1)
+NAMES="2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R"
+
+# Define groups (example: brain vs skin)
+# Here we assign "brain" to all B samples and "skin" to all R samples
+GROUPS=$(echo $NAMES | sed 's/B/brain/g; s/R/skin/g')
 
 # Run Corset for each transcriptome
 echo "Running Corset on fpkm=0 transcriptome..."
-corset -i salmon_eq_classes -p corset_fpkm0 $EQ0
+corset -i salmon_eq_classes -p corset_fpkm0 -n $NAMES -g $GROUPS $EQ0
 
 echo "Running Corset on fpkm=1 transcriptome..."
-corset -i salmon_eq_classes -p corset_fpkm1 $EQ1
+corset -i salmon_eq_classes -p corset_fpkm1 -n $NAMES -g $GROUPS $EQ1
