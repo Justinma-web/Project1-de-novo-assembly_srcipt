@@ -47,20 +47,47 @@ for S in $SAMPLES; do
     gunzip -c $OUT1/aux_info/eq_classes.txt.gz > $OUT1/aux_info/eq_classes.txt
 done
 
-## Collect all eq_classes.txt for Corset
-EQ0=$(ls $WORKDIR/*_quant_fpkm0/aux_info/eq_classes.txt | sort)
-EQ1=$(ls $WORKDIR/*_quant_fpkm1/aux_info/eq_classes.txt | sort)
+###Corset###
 
-# Define sample names (must match order of $EQ0/$EQ1)
-NAMES="2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R"
+# Base working directory
+WORKDIR="/home/jade/1_sandsmelt/rundrap/out_drap_s1"
 
-# Define groups (example: brain vs skin)
-# Here we assign "brain" to all B samples and "skin" to all R samples
-GROUPS=$(echo $NAMES | sed 's/B/brain/g; s/R/skin/g')
+# Samples (order will be used in -n and -g)
+SAMPLES="2B 2R 5B 5R 6B 6R 7B 7R 8B 8R 9B 9R 10B 10R 11B 11R 12B 12R 13B 13R 14B 14R 16B 16R 17B 17R 18B 18R"
 
-# Run Corset for each transcriptome
+# Destination folders (one per fpkm value)
+EQDIR0="$WORKDIR/corset_eq_fpkm0"
+EQDIR1="$WORKDIR/corset_eq_fpkm1"
+mkdir -p "$EQDIR0" "$EQDIR1"
+
+# 1) Copy eq_classes.txt into sample-named subfolders, keeping the original filename
+for S in $SAMPLES; do
+    src0="$WORKDIR/${S}_quant_fpkm0/aux_info/eq_classes.txt"
+    src1="$WORKDIR/${S}_quant_fpkm1/aux_info/eq_classes.txt"
+
+    [[ -s "$src0" ]] || { echo "Missing: $src0" >&2; exit 1; }
+    [[ -s "$src1" ]] || { echo "Missing: $src1" >&2; exit 1; }
+
+    mkdir -p "$EQDIR0/$S" "$EQDIR1/$S"
+    cp -f "$src0" "$EQDIR0/$S/eq_classes.txt"
+    cp -f "$src1" "$EQDIR1/$S/eq_classes.txt"
+done
+
+# 2) Run Corset with hardcoded -n and -g, using filenames directly via glob
+# Grouping: 2,5,6,7,8,9,10 -> lone_fish; 11,12,13,14,16,17,18 -> school
+# -n and -g are comma-separated lists matching the sample order above
+
 echo "Running Corset on fpkm=0 transcriptome..."
-corset -i salmon_eq_classes -p corset_fpkm0 -n $NAMES -g $GROUPS $EQ0
+corset -i salmon_eq_classes -p corset_fpkm0 \
+  -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
+  -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
+  "$EQDIR0"/*/eq_classes.txt
 
 echo "Running Corset on fpkm=1 transcriptome..."
-corset -i salmon_eq_classes -p corset_fpkm1 -n $NAMES -g $GROUPS $EQ1
+corset -i salmon_eq_classes -p corset_fpkm1 \
+  -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
+  -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
+  "$EQDIR1"/*/eq_classes.txt
+
+echo "Done."
+
