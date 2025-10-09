@@ -9,6 +9,6 @@ perl /home/jade/3_trinityrnaseq-v2.15.1/util/TrinityStats.pl transcripts_fpkm_0.
 /home/jade/anaconda3/bin/stats.sh in=transcripts.fa
 
 ###contig_ExN50_statistic.pl: ExN50###
-perl ~/software/trinityrnaseq-v2.15.1/util/misc/contig_ExN50_statistic.pl \
+perl /home/jade/3_trinityrnaseq-v2.15.1/util/misc/contig_ExN50_statistic.pl \
   --transcripts transcripts_fpkm_0.fa \
   --expression_matrix expression_matrix.tsv
