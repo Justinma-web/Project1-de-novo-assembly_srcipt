@@ -5,10 +5,10 @@
 ##perl <TrinityStats.pl's path> [transcriptome]###
 perl /home/jade/3_trinityrnaseq-v2.15.1/util/TrinityStats.pl transcripts_fpkm_0.fa
 
-###stats.sh from bbmap: basic stats###
+###Stats.sh from bbmap: basic stats###
 /home/jade/anaconda3/bin/stats.sh in=transcripts.fa
 
-###contig_ExN50_statistic.pl: ExN50###
-perl /home/jade/3_trinityrnaseq-v2.15.1/util/misc/contig_ExN50_statistic.pl \
-  --transcripts transcripts_fpkm_0.fa \
-  --expression_matrix expression_matrix.tsv
+###BUSCO: check biological meanings###
+
+
+###Bowtie2: check mapping rate###
