@@ -1,5 +1,8 @@
 #!/bin/bash
 
+###Check contigs###
+grep -o ">" <filename.fa> | wc -l
+
 ###‘TrinityStats.pl’ from Trinity accessory scripts: basic stats###
 ##https://github.com/trinityrnaseq/trinityrnaseq/tree/master/util##
 ##perl <TrinityStats.pl's path> [transcriptome]###
