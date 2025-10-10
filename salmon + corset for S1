@@ -73,21 +73,26 @@ for S in $SAMPLES; do
     cp -f "$src1" "$EQDIR1/$S/eq_classes.txt"
 done
 
-# 2) Run Corset with hardcoded -n and -g, using filenames directly via glob
-# Grouping: 2,5,6,7,8,9,10 -> lone_fish; 11,12,13,14,16,17,18 -> school
-# -n and -g are comma-separated lists matching the sample order above
-
-echo "Running Corset on fpkm=0 transcriptome..."
+# 2) Run Corset with grouping
+echo "Running Corset on fpkm=0 transcriptome (grouped)..."
 corset -i salmon_eq_classes -p corset_fpkm0 \
   -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
   -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
   "$EQDIR0"/*/eq_classes.txt
 
-echo "Running Corset on fpkm=1 transcriptome..."
+echo "Running Corset on fpkm=1 transcriptome (grouped)..."
 corset -i salmon_eq_classes -p corset_fpkm1 \
   -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
   -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
   "$EQDIR1"/*/eq_classes.txt
 
-echo "Done."
+# 3) Run Corset without grouping
+echo "Running Corset on fpkm=0 transcriptome (no grouping)..."
+corset -i salmon_eq_classes -p corset_fpkm0_nogroup \
+  "$EQDIR0"/*/eq_classes.txt
 
+echo "Running Corset on fpkm=1 transcriptome (no grouping)..."
+corset -i salmon_eq_classes -p corset_fpkm1_nogroup \
+  "$EQDIR1"/*/eq_classes.txt
+
+echo "Done."
