@@ -1,3 +1,4 @@
+#!/bin/bash
 #Summary of all strategies' script in this project. 
 
 # De-novo-assembly_1
