@@ -14,79 +14,83 @@ perl /home/jade/3_trinityrnaseq-v2.15.1/util/TrinityStats.pl transcripts_fpkm_0.
 ###BUSCO: check biological meanings###
 
 
-### Bowtie2: check mapping rate###
-## Build ###
+### Bowtie2: check mapping rate, save as script###
+#!/bin/bash
+set -euo pipefail
+
+### Bowtie2: check mapping rate ###
+
 # Base directory for Bowtie2 indexes
 INDEX_BASE=/home/jade/1_sandsmelt/rundrap/bowtie2_indexes
-
-# Transcriptome FASTA files
-TRANS1=~/1_sandsmelt/rundrap/out_drap/meta_BR/d-cov_filter/transcripts_fpkm_1.fa
-TRANS3=~/1_sandsmelt/rundrap/out_drap/meta_BR/d-cov_filter/transcripts_fpkm_3.fa
-TRANS5=~/1_sandsmelt/rundrap/out_drap/meta_BR/d-cov_filter/transcripts_fpkm_5.fa
-
-# Make sure output directories exist
-mkdir -p $INDEX_BASE/trans1
-mkdir -p $INDEX_BASE/trans3
-mkdir -p $INDEX_BASE/trans5
-
-echo "=== Building Bowtie2 index for trans1 ==="
-bowtie2-build "$TRANS1" $INDEX_BASE/trans1/trans1
-
-echo "=== Building Bowtie2 index for trans3 ==="
-bowtie2-build "$TRANS3" $INDEX_BASE/trans3/trans3
-
-echo "=== Building Bowtie2 index for trans5 ==="
-bowtie2-build "$TRANS5" $INDEX_BASE/trans5/trans5
-
-echo "=== All requested indexes built successfully ==="
-
-### mapping ###
-# Base directory for Bowtie2 indexes
-INDEX_BASE=/home/jade/1_sandsmelt/rundrap/bowtie2_indexes
-
-# Directory containing your read files
-READS_DIR=/home/jade/1_sandsmelt/rundrap/out_drap
+mkdir -p "$INDEX_BASE"
 
 # Output base directory for SAM files and logs
 MAP_BASE=/home/jade/1_sandsmelt/rundrap/mapping_results
 mkdir -p "$MAP_BASE"
 
-# Transcriptomes to map against
-TRANSCRIPTOMES=("trans0" "trans1" "trans3" "trans5")
+# Directory containing your read files
+READS_DIR=/home/jade/1_sandsmelt/rundrap/out_drap_s1
 
-# Loop through each transcriptome
-for TRANS in "${TRANSCRIPTOMES[@]}"
-do
-    INDEX="$INDEX_BASE/$TRANS"   # no duplicate 'trans'
-    OUTDIR="$MAP_BASE/$TRANS"
+# Transcriptome FASTA files (Strategies 1–3)
+TRANSCRIPTOMES=(
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_0_s1_group.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_1_s1_group.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_0_s1_nogroup.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_1_s1_nogroup.fa"
+
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.5.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s2/cluster_0_s2.fa"
+  "/home/jade/1_sandsmelt/rundrap/out_drap_s2/cluster_0.5_s2.fa"
+
+  "/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.fa"
+  "/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.5.fa"
+  "/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_1.fa"
+  "/home/jade/1_sandsmelt/rundrap/meta_s3/cluster_0_s3.fa"
+  "/home/jade/1_sandsmelt/rundrap/meta_s3/cluster_0.5_s3.fa"
+)
+
+### Build Bowtie2 indexes ###
+for FASTA in "${TRANSCRIPTOMES[@]}"; do
+    NAME=$(basename "$FASTA" .fa)   # e.g. cluster_0_s1_group
+    IDX_DIR="$INDEX_BASE/$NAME"
+    mkdir -p "$IDX_DIR"
+
+    echo "=== Building Bowtie2 index for $NAME ==="
+    bowtie2-build "$FASTA" "$IDX_DIR/$NAME"
+done
+
+echo "=== All requested indexes built successfully ==="
+
+### Mapping ###
+for FASTA in "${TRANSCRIPTOMES[@]}"; do
+    NAME=$(basename "$FASTA" .fa)
+    IDX_DIR="$INDEX_BASE/$NAME"
+    OUTDIR="$MAP_BASE/$NAME"
     mkdir -p "$OUTDIR"
 
-    echo "=== Mapping reads to $TRANS ==="
+    echo "=== Mapping reads to $NAME ==="
 
     # Loop through all forward read files (_1.norm.fq.gz)
-    for R1 in "$READS_DIR"/*/uf*_1.norm.fq.gz
-    do
-        # Find the matching reverse read file
+    for R1 in "$READS_DIR"/*/uf*_1.norm.fq.gz; do
         R2=${R1/_1.norm.fq.gz/_2.norm.fq.gz}
-
-        # Extract sample name and directory
-        SAMPLE=$(basename "$R1" _1.norm.fq.gz)
         SAMPLE_DIR=$(basename "$(dirname "$R1")")
+        SAMPLE=$(basename "$R1" _1.norm.fq.gz)
 
-        echo "Mapping $SAMPLE_DIR ($SAMPLE) to $TRANS..."
+        echo "Mapping $SAMPLE_DIR ($SAMPLE) to $NAME..."
 
-        # Run Bowtie2 and save terminal output to a log file
-        bowtie2 -x "$INDEX/$TRANS" \
+        bowtie2 -x "$IDX_DIR/$NAME" \
             -1 "$R1" \
             -2 "$R2" \
             -q -p 22 --sensitive --no-discordant --no-mixed \
             -S "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}.sam" \
             2> "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}_bowtie2.txt"
 
-        echo "Finished mapping $SAMPLE_DIR ($SAMPLE) to $TRANS"
+        echo "Finished mapping $SAMPLE_DIR ($SAMPLE) to $NAME"
         echo "----------------------------------------"
     done
 done
 
 echo "=== All mappings completed ==="
+
 
