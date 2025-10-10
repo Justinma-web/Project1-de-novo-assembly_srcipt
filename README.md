@@ -11,17 +11,22 @@ Strategy 2: merge all sequences -> runDRAP
 Strategy 3: merge skin sequences &amp; merge brain sequences -> runDRAP separately -> merge 2 assembles
 
 # Path of files
+##### strategy 1 #####
 # transcriptome using Strategy 1 to assemble: 
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/transcripts_fpkm_0.fa
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/transcripts_fpkm_1.fa
 # corset clustered transcriptome using Strategy 1 to assemble: 
-
-
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_0_s1_group.fa
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_1_s1_group.fa
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_0_s1_nogroup.fa
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/meta_BR/d-cov_filter/cluster_1_s1_nogroup.fa
 
 # Strategy 1 raw sequence
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_1.norm.fq.gz
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_2.norm.fq.gz
+##### strategy 1 #####
 
+##### strategy 2 #####
 # transcriptome using Strategy 2 to assemble: 
 /home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.fa
 /home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.5.fa
@@ -33,7 +38,9 @@ Strategy 3: merge skin sequences &amp; merge brain sequences -> runDRAP separate
 # Strategy 2 raw sequence
 /home/jade/1_sandsmelt/rundrap/out_drap_s2/merged_1.norm.fq.gz
 /home/jade/1_sandsmelt/rundrap/out_drap_s2/merged_2.norm.fq.gz
+##### strategy 2 #####
 
+##### strategy 3 #####
 # transcriptome using Strategy 3 to assemble: 
 /home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.fa
 /home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.5.fa
@@ -45,3 +52,4 @@ Strategy 3: merge skin sequences &amp; merge brain sequences -> runDRAP separate
 # Strategy 3 raw sequence
 /home/jade/1_sandsmelt/rundrap/out_drap_s3*/merged_*_1.norm.fq.gz
 /home/jade/1_sandsmelt/rundrap/out_drap_s3*/merged_*_2.norm.fq.gz
+##### strategy 3 #####
