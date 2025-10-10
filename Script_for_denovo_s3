@@ -88,12 +88,13 @@ runDrap \
   --coverage 0,0.5,1 \
   --no-rate
 
-# Step 3: runMeta to merge both assemblies
+# Step 3: runMeta to merge both assemblies, remember to add "--no-rate", or it will take longer...
 run_step "runMeta (merge brain + skin)" \
 runMeta \
   --drap-dirs /mnt/data/out_drap_s3_b,/mnt/data/out_drap_s3_r \
   --outdir /mnt/data/meta_s3 \
-  --coverage 0,0.5,1
+  --coverage 0,0.5,1 \
+  --no-rate
 
 echo "=== All steps completed successfully! ==="
 ############
