@@ -54,3 +54,10 @@ corset -i salmon_eq_classes -p corset_fpkm05 \
   salmon_quant_R_fpkm05/aux_info/eq_classes.txt
 
 echo "Done. Corset outputs: corset_fpkm0-clusters.txt and corset_fpkm05-clusters.txt"
+
+##extracting sequence according to corset result
+python3 /home/jade/Corset-tools/fetchClusterSeqs.py \
+  -i transcripts_fpkm_<fpkm value>.fa \
+  -c corset_fpkm<value>-clusters.txt \
+  -o <output file name: e.g.:cluster_0.5_s2.fa> \
+  -l
