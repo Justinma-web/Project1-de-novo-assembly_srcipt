@@ -1,0 +1,56 @@
+#!/bin/bash
+set -euo pipefail
+
+# === Base paths ===
+WORKDIR=$(pwd)
+TXDIR=/home/jade/1_sandsmelt/rundrap/meta_s3
+
+# Transcriptomes
+TX0=$TXDIR/transcripts_fpkm_0.fa
+TX05=$TXDIR/transcripts_fpkm_0.5.fa
+
+# Raw reads
+B1=/home/jade/1_sandsmelt/rundrap/out_drap_s3_b/merged_B_1.norm.fq.gz
+B2=/home/jade/1_sandsmelt/rundrap/out_drap_s3_b/merged_B_2.norm.fq.gz
+R1=/home/jade/1_sandsmelt/rundrap/out_drap_s3_r/merged_R_1.norm.fq.gz
+R2=/home/jade/1_sandsmelt/rundrap/out_drap_s3_r/merged_R_2.norm.fq.gz
+
+# === Build Salmon indices ===
+salmon index -t $TX0  -i salmon_index_fpkm0
+salmon index -t $TX05 -i salmon_index_fpkm05
+
+# === Run Salmon quantification (equivalence classes only) ===
+# Sample B
+salmon quant -i salmon_index_fpkm0  -l A --dumpEq --hardFilter --skipQuant \
+  -1 $B1 -2 $B2 -p 8 -o salmon_quant_B_fpkm0
+salmon quant -i salmon_index_fpkm05 -l A --dumpEq --hardFilter --skipQuant \
+  -1 $B1 -2 $B2 -p 8 -o salmon_quant_B_fpkm05
+
+# Sample R
+salmon quant -i salmon_index_fpkm0  -l A --dumpEq --hardFilter --skipQuant \
+  -1 $R1 -2 $R2 -p 8 -o salmon_quant_R_fpkm0
+salmon quant -i salmon_index_fpkm05 -l A --dumpEq --hardFilter --skipQuant \
+  -1 $R1 -2 $R2 -p 8 -o salmon_quant_R_fpkm05
+
+# === (Optional) Unzip eq_classes.txt.gz ===
+gunzip -c salmon_quant_B_fpkm0/aux_info/eq_classes.txt.gz > salmon_quant_B_fpkm0/aux_info/eq_classes.txt
+gunzip -c salmon_quant_B_fpkm05/aux_info/eq_classes.txt.gz > salmon_quant_B_fpkm05/aux_info/eq_classes.txt
+gunzip -c salmon_quant_R_fpkm0/aux_info/eq_classes.txt.gz > salmon_quant_R_fpkm0/aux_info/eq_classes.txt
+gunzip -c salmon_quant_R_fpkm05/aux_info/eq_classes.txt.gz > salmon_quant_R_fpkm05/aux_info/eq_classes.txt
+
+# === Run Corset ===
+# fpkm=0 transcriptome
+corset -i salmon_eq_classes -p corset_fpkm0 \
+  -n "B,R" \
+  -g "groupB,groupR" \
+  salmon_quant_B_fpkm0/aux_info/eq_classes.txt \
+  salmon_quant_R_fpkm0/aux_info/eq_classes.txt
+
+# fpkm=0.5 transcriptome
+corset -i salmon_eq_classes -p corset_fpkm05 \
+  -n "B,R" \
+  -g "groupB,groupR" \
+  salmon_quant_B_fpkm05/aux_info/eq_classes.txt \
+  salmon_quant_R_fpkm05/aux_info/eq_classes.txt
+
+echo "Done. Corset outputs: corset_fpkm0-clusters.txt and corset_fpkm05-clusters.txt"
