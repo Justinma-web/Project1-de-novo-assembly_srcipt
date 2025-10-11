@@ -11,7 +11,7 @@ trim_galore \
 --length 70 \
 --quality 30 \
 --paired \
-10B_1.fastq.gz  10B_2.fastq.gz \
+<file_name: e.g.: 10B_1.fastq.gz  10B_2.fastq.gz, use space to seperate> \
 
 #kraken2
 kraken2 \
@@ -22,3 +22,5 @@ kraken2 \
 --confidence 0.25 \
 --paired \
 --gzip-compressed 10B_1_val_1.fq.gz 10B_2_val_2.fq.gz \
+
+# rRNA contamination check: bowtie2#
