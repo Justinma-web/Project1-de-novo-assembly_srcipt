@@ -24,11 +24,19 @@ xxxx
 ##R1 & R2 ###
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_1.norm.fq.gz
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_2.norm.fq.gz
-## 4 GROUP FORMAT: lone brain, lone skin, school brain, school skin ###
-XXXX
-XXXX
-XXXX
-XXXX
+## 4 GROUP FORMAT: lone brain, lone skin, school brain, school skin ##
+## school brain
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/school/school_brain/*/uf*_1.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/school/school_brain/*/uf*_2.norm.fq.gz
+## school skin
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/school/school_skin/*/uf*_1.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/school/school_skin/*/uf*_2.norm.fq.gz
+## lone skin
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/lone/lone_skin/*/uf*_1.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/lone/lone_skin/*/uf*_2.norm.fq.gz
+## lone brain
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/lone/lone_brain/*/uf*_1.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/lone/lone_brain/*/uf*_2.norm.fq.gz
 ##### strategy 1 #####
 
 ##### strategy 2 #####
