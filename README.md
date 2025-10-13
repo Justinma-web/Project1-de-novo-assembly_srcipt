@@ -22,8 +22,8 @@ xxxx
 
 # Strategy 1 raw sequence
 ##R1 & R2 ###
-/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_1.norm.fq.gz
-/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/uf*_2.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_1.norm.fq.gz
+/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_2.norm.fq.gz
 ## 4 GROUP FORMAT: lone brain, lone skin, school brain, school skin ##
 ## school brain
 /home/jade/1_sandsmelt/rundrap/out_drap_s1/school/school_brain/*/uf*_1.norm.fq.gz
