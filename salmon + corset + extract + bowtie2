@@ -6,14 +6,16 @@ set -euo pipefail
 # 1) Salmon: index + quant (20 threads)
 # 2) Corset: clustered with 4 groups using Salmon eq_classes
 # 3) Extract clustered transcriptomes (fetchClusterSeqs.py)
-# 4) Bowtie2: build indexes + map reads (22 threads) for rates
+# 4) Bowtie2: build indexes (individually) + map reads (20 threads) to clustered only
+#    - No SAM output is saved; mapping stats are in log files
+#    - Original transcriptomes are NOT mapped
 # ============================================================
+
+echo "[START] Pipeline"
 
 # -----------------------
 # Global configuration
 # -----------------------
-echo "[START] Pipeline"
-
 S1_BASE="/home/jade/1_sandsmelt/rundrap/out_drap_s1"
 S2_BASE="/home/jade/1_sandsmelt/rundrap/out_drap_s2"
 S3_BASE="/home/jade/1_sandsmelt/rundrap/meta_s3"
@@ -67,7 +69,7 @@ GROUPS=${GROUPS%,}
 # ------------------------------------------------
 echo "[STEP 1] Salmon: Indexing and quantification (threads=$SALMON_THREADS)"
 
-# 1A. Indexing
+# 1A. Index each transcriptome individually
 for NAME in "${TX_NAMES[@]}"; do
   FASTA="${TX[$NAME]}"
   IDX="$SALMON_INDEX_BASE/salmon_index_${NAME}"
@@ -82,7 +84,7 @@ for NAME in "${TX_NAMES[@]}"; do
 done
 echo "  [1A] All indices ready."
 
-# 1B. Quantification
+# 1B. Quantification for all samples × transcriptomes
 R1_FILES=(/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_1.norm.fq.gz)
 echo "  [1B] Quantification: found ${#R1_FILES[@]} forward read files."
 
@@ -159,19 +161,14 @@ done
 echo "[STEP 3 DONE] Clustered FASTAs ready."
 
 # ------------------------------------------
-# Step 4: Bowtie2 (build indexes + mapping)
+# Step 4: Bowtie2 (build indexes individually + mapping)
 # ------------------------------------------
 echo "[STEP 4] Bowtie2: build indexes + mapping (threads=$BOWTIE2_THREADS)"
+echo "  [NOTE] Mapping only clustered transcriptomes; originals are NOT mapped."
+echo "  [NOTE] No SAM files saved; mapping stats are in *_bowtie2.txt logs."
 
-# Build list of transcriptomes to map: originals + clustered
-TO_MAP=(
-  "${TX["transcripts_fpkm0_s1"]}"
-  "${TX["transcripts_fpkm1_s1"]}"
-  "${TX["transcripts_fpkm0_s2"]}"
-  "${TX["transcripts_fpkm0.5_s2"]}"
-  "${TX["transcripts_fpkm0_s3"]}"
-  "${TX["transcripts_fpkm0.5_s3"]}"
-  "${TX["transcripts_fpkm1_s3"]}"
+# Build list of clustered transcriptomes to map (no originals)
+CLUSTERED_TO_MAP=(
   "$S1_BASE/meta_BR/d-cov_filter/cluster_transcripts_fpkm0_s1.fa"
   "$S1_BASE/meta_BR/d-cov_filter/cluster_transcripts_fpkm1_s1.fa"
   "$S2_BASE/cluster_transcripts_fpkm0_s2.fa"
@@ -181,32 +178,32 @@ TO_MAP=(
   "$S3_BASE/cluster_transcripts_fpkm1_s3.fa"
 )
 
-# 4A. Build Bowtie2 indexes
-echo "  [4A] Building Bowtie2 indexes"
-for FASTA in "${TO_MAP[@]}"; do
+# 4A. Build Bowtie2 indexes individually for each clustered FASTA
+echo "  [4A] Building Bowtie2 indexes (clustered only)"
+for FASTA in "${CLUSTERED_TO_MAP[@]}"; do
   if [[ ! -s "$FASTA" ]]; then
     echo "    [WARN] Missing or empty FASTA: $FASTA (skip index)"
     continue
   fi
   NAME=$(echo "$FASTA" | sed 's|/home/jade/1_sandsmelt/rundrap/||; s|/|_|g; s|\.fa$||')
-  IDX_DIR="$BOWTIE2_INDEX_BASE/$NAME"
+  IDX_DIR="$BWT2_INDEX_BASE/$NAME"
   mkdir -p "$IDX_DIR"
-  echo "    [BUILD] $NAME"
+  echo "    [BUILD] $NAME -> $IDX_DIR/$NAME"
   bowtie2-build "$FASTA" "$IDX_DIR/$NAME"
   echo "    [DONE] Index built: $NAME"
 done
 echo "  [4A DONE] Index building complete."
 
-# 4B. Mapping
-echo "  [4B] Mapping reads to each transcriptome"
-for FASTA in "${TO_MAP[@]}"; do
+# 4B. Mapping to clustered transcriptomes
+echo "  [4B] Mapping reads to clustered transcriptomes (no SAM saved)"
+for FASTA in "${CLUSTERED_TO_MAP[@]}"; do
   if [[ ! -s "$FASTA" ]]; then
     echo "    [SKIP] Mapping for missing FASTA: $FASTA"
     continue
   fi
   NAME=$(echo "$FASTA" | sed 's|/home/jade/1_sandsmelt/rundrap/||; s|/|_|g; s|\.fa$||')
-  IDX_DIR="$BOWTIE2_INDEX_BASE/$NAME"
-  OUTDIR="$BOWTIE2_MAP_BASE/$NAME"
+  IDX_DIR="$BWT2_INDEX_BASE/$NAME"
+  OUTDIR="$BWT2_MAP_BASE/$NAME"
   mkdir -p "$OUTDIR"
 
   echo "    [MAP] Target=$NAME"
@@ -217,11 +214,12 @@ for FASTA in "${TO_MAP[@]}"; do
     SAMPLE=$(basename "$R1" _1.norm.fq.gz)
 
     echo "      [RUN] $SAMPLE_DIR ($SAMPLE) -> $NAME"
+    # No SAM output: discard alignment stream, keep log only
     bowtie2 -x "$IDX_DIR/$NAME" \
       -1 "$R1" \
       -2 "$R2" \
       -q -p "$BOWTIE2_THREADS" --sensitive --no-discordant --no-mixed \
-      -S "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}.sam" \
+      1> /dev/null \
       2> "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}_bowtie2.txt"
     echo "      [DONE] $SAMPLE_DIR ($SAMPLE)"
   done
@@ -236,9 +234,8 @@ echo "[SUMMARY]"
 echo " Salmon indices: $SALMON_INDEX_BASE/salmon_index_*"
 echo " Salmon quant:   $SALMON_QUANT_BASE/<transcriptome>/<sample>/"
 echo " Corset outputs: ./corset_* (clusters, counts)"
-echo " Clustered FASTAs placed next to originals (cluster_*.fa)"
-echo " Bowtie2 indexes: $BOWTIE2_INDEX_BASE/<name>/<name>.*"
-echo " Bowtie2 logs:    $BOWTIE2_MAP_BASE/<name>/*_bowtie2.txt"
-echo " Bowtie2 SAMs:    $BOWTIE2_MAP_BASE/<name>/*.sam"
-
+echo " Clustered FASTAs: cluster_transcripts_* placed next to originals"
+echo " Bowtie2 indexes: $BWT2_INDEX_BASE/<name>/<name>.* (clustered only)"
+echo " Bowtie2 logs:    $BWT2_MAP_BASE/<name>/*_bowtie2.txt (mapping stats)"
+echo " (No SAM files produced)"
 echo "[FINISH] Pipeline complete"
