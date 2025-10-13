@@ -1,105 +1,62 @@
 #!/bin/bash
-set -e
+## run salmon and corset to 7 transcriptomes. 
+set -euo pipefail
 
-# Base paths
+### Salmon quantification for multiple transcriptomes ###
 WORKDIR=/home/jade/1_sandsmelt/rundrap/out_drap_s1
-TXDIR=$WORKDIR/meta_BR/d-cov_filter
+THREADS=20   # use 20 CPU cores
 
-# Transcriptomes
-TX0=$TXDIR/transcripts_fpkm_0.fa
-TX1=$TXDIR/transcripts_fpkm_1.fa
+# Transcriptomes (7 total, each with a unique index name)
+declare -A TRANSCRIPTOMES
+TRANSCRIPTOMES["transcripts_fpkm0_s1"]=$WORKDIR/meta_BR/d-cov_filter/transcripts_fpkm_0.fa
+TRANSCRIPTOMES["transcripts_fpkm1_s1"]=$WORKDIR/meta_BR/d-cov_filter/transcripts_fpkm_1.fa
+TRANSCRIPTOMES["transcripts_fpkm0_s2"]=/home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.fa
+TRANSCRIPTOMES["transcripts_fpkm0.5_s2"]=/home/jade/1_sandsmelt/rundrap/out_drap_s2/transcripts_fpkm_0.5.fa
+TRANSCRIPTOMES["transcripts_fpkm0_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.fa
+TRANSCRIPTOMES["transcripts_fpkm0.5_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.5.fa
+TRANSCRIPTOMES["transcripts_fpkm1_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_1.fa
 
-# Index directories
-IDX0=$WORKDIR/salmon_index_fpkm0
-IDX1=$WORKDIR/salmon_index_fpkm1
+### 1. Build indices (skip if already exist) ###
+for NAME in "${!TRANSCRIPTOMES[@]}"; do
+    TX=${TRANSCRIPTOMES[$NAME]}
+    IDX=$WORKDIR/salmon_index_${NAME}
 
-# Build Salmon indices (once per transcriptome)
-salmon index --index $IDX0 --transcripts $TX0
-salmon index --index $IDX1 --transcripts $TX1
-
-# Sample directories (all B and R folders)
-SAMPLES="2B 2R 5B 5R 6B 6R 7B 7R 8B 8R 9B 9R 10B 10R \
-         11B 11R 12B 12R 13B 13R 14B 14R 16B 16R 17B 17R 18B 18R"
-
-# Run Salmon quant for each sample and transcriptome
-for S in $SAMPLES; do
-    R1=$WORKDIR/$S/uf${S}_1.norm.fq.gz
-    R2=$WORKDIR/$S/uf${S}_2.norm.fq.gz
-
-    # Output directories
-    OUT0=$WORKDIR/${S}_quant_fpkm0
-    OUT1=$WORKDIR/${S}_quant_fpkm1
-
-    echo "Running Salmon for sample $S on fpkm=0 transcriptome..."
-    salmon quant --index $IDX0 --libType A \
-        --dumpEq --hardFilter --skipQuant \
-        -1 $R1 -2 $R2 \
-        --output $OUT0
-
-    echo "Running Salmon for sample $S on fpkm=1 transcriptome..."
-    salmon quant --index $IDX1 --libType A \
-        --dumpEq --hardFilter --skipQuant \
-        -1 $R1 -2 $R2 \
-        --output $OUT1
-
-    # Unzip eq_classes.txt.gz
-    gunzip -c $OUT0/aux_info/eq_classes.txt.gz > $OUT0/aux_info/eq_classes.txt
-    gunzip -c $OUT1/aux_info/eq_classes.txt.gz > $OUT1/aux_info/eq_classes.txt
+    if [[ -d "$IDX" && -s "$IDX/hash.bin" ]]; then
+        echo "Index for $NAME already exists at $IDX — skipping."
+    else
+        echo "Building Salmon index for $NAME with $THREADS threads..."
+        mkdir -p "$IDX"
+        salmon index --threads $THREADS --index "$IDX" --transcripts "$TX"
+    fi
 done
 
-###Corset###
+### 2. Quantify reads ###
+R1_FILES=(/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_1.norm.fq.gz)
 
-# Base working directory
-WORKDIR="/home/jade/1_sandsmelt/rundrap/out_drap_s1"
+for R1 in "${R1_FILES[@]}"; do
+    R2=${R1/_1.norm.fq.gz/_2.norm.fq.gz}
+    SAMPLE=$(basename "$R1" _1.norm.fq.gz)
 
-# Samples (order will be used in -n and -g)
-SAMPLES="2B 2R 5B 5R 6B 6R 7B 7R 8B 8R 9B 9R 10B 10R 11B 11R 12B 12R 13B 13R 14B 14R 16B 16R 17B 17R 18B 18R"
+    for NAME in "${!TRANSCRIPTOMES[@]}"; do
+        IDX=$WORKDIR/salmon_index_${NAME}
+        OUT=$WORKDIR/salmon_quant/${NAME}/${SAMPLE}
 
-# Destination folders (one per fpkm value)
-EQDIR0="$WORKDIR/corset_eq_fpkm0"
-EQDIR1="$WORKDIR/corset_eq_fpkm1"
-mkdir -p "$EQDIR0" "$EQDIR1"
+        if [[ -d "$OUT" && -s "$OUT/aux_info/eq_classes.txt.gz" ]]; then
+            echo "Salmon quant for $SAMPLE on $NAME already exists — skipping."
+            continue
+        fi
 
-# 1) Copy eq_classes.txt into sample-named subfolders, keeping the original filename
-for S in $SAMPLES; do
-    src0="$WORKDIR/${S}_quant_fpkm0/aux_info/eq_classes.txt"
-    src1="$WORKDIR/${S}_quant_fpkm1/aux_info/eq_classes.txt"
+        echo "Running Salmon for sample $SAMPLE on $NAME with $THREADS threads..."
+        mkdir -p "$OUT"
+        salmon quant --threads $THREADS --index "$IDX" --libType A \
+            --dumpEq --hardFilter --skipQuant \
+            -1 "$R1" -2 "$R2" \
+            --output "$OUT"
 
-    [[ -s "$src0" ]] || { echo "Missing: $src0" >&2; exit 1; }
-    [[ -s "$src1" ]] || { echo "Missing: $src1" >&2; exit 1; }
-
-    mkdir -p "$EQDIR0/$S" "$EQDIR1/$S"
-    cp -f "$src0" "$EQDIR0/$S/eq_classes.txt"
-    cp -f "$src1" "$EQDIR1/$S/eq_classes.txt"
+        if [ -f "$OUT/aux_info/eq_classes.txt.gz" ]; then
+            gunzip -c "$OUT/aux_info/eq_classes.txt.gz" > "$OUT/aux_info/eq_classes.txt"
+        fi
+    done
 done
 
-# 2) Run Corset with grouping
-echo "Running Corset on fpkm=0 transcriptome (grouped)..."
-corset -i salmon_eq_classes -p corset_fpkm0 \
-  -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
-  -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
-  "$EQDIR0"/*/eq_classes.txt
-
-echo "Running Corset on fpkm=1 transcriptome (grouped)..."
-corset -i salmon_eq_classes -p corset_fpkm1 \
-  -n "2B,2R,5B,5R,6B,6R,7B,7R,8B,8R,9B,9R,10B,10R,11B,11R,12B,12R,13B,13R,14B,14R,16B,16R,17B,17R,18B,18R" \
-  -g "lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,lone_fish,school,school,school,school,school,school,school,school,school,school,school,school,school,school" \
-  "$EQDIR1"/*/eq_classes.txt
-
-# 3) Run Corset without grouping
-echo "Running Corset on fpkm=0 transcriptome (no grouping)..."
-corset -i salmon_eq_classes -p corset_fpkm0_nogroup \
-  "$EQDIR0"/*/eq_classes.txt
-
-echo "Running Corset on fpkm=1 transcriptome (no grouping)..."
-corset -i salmon_eq_classes -p corset_fpkm1_nogroup \
-  "$EQDIR1"/*/eq_classes.txt
-
-echo "Done."
-
-##extracting sequence according to corset result
-python3 /home/jade/Corset-tools/fetchClusterSeqs.py \
-  -i transcripts_fpkm_<fpkm value>.fa \
-  -c corset_fpkm<value>-clusters.txt \
-  -o <output file name: e.g.:cluster_0.5_s2.fa> \
-  -l
+echo "=== Salmon quantification completed with $THREADS threads ==="
