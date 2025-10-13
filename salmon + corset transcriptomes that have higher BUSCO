@@ -1,8 +1,10 @@
 #!/bin/bash
-## run salmon and corset to 7 transcriptomes. 
 set -euo pipefail
 
-### Salmon quantification for multiple transcriptomes ###
+############################################
+# 1. Salmon indexing and quantification
+############################################
+
 WORKDIR=/home/jade/1_sandsmelt/rundrap/out_drap_s1
 THREADS=20   # use 20 CPU cores
 
@@ -16,7 +18,7 @@ TRANSCRIPTOMES["transcripts_fpkm0_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/tr
 TRANSCRIPTOMES["transcripts_fpkm0.5_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_0.5.fa
 TRANSCRIPTOMES["transcripts_fpkm1_s3"]=/home/jade/1_sandsmelt/rundrap/meta_s3/transcripts_fpkm_1.fa
 
-### 1. Build indices (skip if already exist) ###
+### Build indices (skip if already exist)
 for NAME in "${!TRANSCRIPTOMES[@]}"; do
     TX=${TRANSCRIPTOMES[$NAME]}
     IDX=$WORKDIR/salmon_index_${NAME}
@@ -30,7 +32,7 @@ for NAME in "${!TRANSCRIPTOMES[@]}"; do
     fi
 done
 
-### 2. Quantify reads ###
+### Quantify reads
 R1_FILES=(/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_1.norm.fq.gz)
 
 for R1 in "${R1_FILES[@]}"; do
@@ -60,3 +62,62 @@ for R1 in "${R1_FILES[@]}"; do
 done
 
 echo "=== Salmon quantification completed with $THREADS threads ==="
+
+
+############################################
+# 2. Corset clustering
+############################################
+
+CWORKDIR=$WORKDIR/salmon_quant
+
+# Transcriptomes we quantified against
+TRANSCRIPTOME_NAMES=(
+  transcripts_fpkm0_s1
+  transcripts_fpkm1_s1
+  transcripts_fpkm0_s2
+  transcripts_fpkm0.5_s2
+  transcripts_fpkm0_s3
+  transcripts_fpkm0.5_s3
+  transcripts_fpkm1_s3
+)
+
+# Define sample order explicitly (important for -n and -g)
+SAMPLES=(
+  2R 5R 6R 7R 8R 9R 10R   # lone_skin
+  2B 5B 6B 7B 8B 9B 10B   # lone_brain
+  11R 12R 13R 14R 16R 17R 18R   # school_skin
+  11B 12B 13B 14B 16B 17B 18B   # school_brain
+)
+
+# Build -n string (sample names)
+NAMES=$(IFS=,; echo "${SAMPLES[*]}")
+
+# Build -g string (group assignments)
+GROUPS=$(printf "1,%.0s" {1..7})
+GROUPS+=$(printf "2,%.0s" {1..7})
+GROUPS+=$(printf "3,%.0s" {1..7})
+GROUPS+=$(printf "4,%.0s" {1..7})
+GROUPS=${GROUPS%,}
+
+echo "Sample names (-n): $NAMES"
+echo "Groupings   (-g): $GROUPS"
+
+# Run Corset for each transcriptome
+for TX in "${TRANSCRIPTOME_NAMES[@]}"; do
+    echo ">>> Running Corset for $TX ..."
+    OUTPREFIX=corset_${TX}
+
+    FILES=()
+    for S in "${SAMPLES[@]}"; do
+        FILES+=("$CWORKDIR/$TX/${S}_uf${S}/aux_info/eq_classes.txt")
+    done
+
+    corset -i salmon_eq_classes -p "$OUTPREFIX" \
+      -n "$NAMES" \
+      -g "$GROUPS" \
+      "${FILES[@]}"
+
+    echo "<<< Finished Corset for $TX"
+done
+
+echo "=== All Corset runs complete ==="
