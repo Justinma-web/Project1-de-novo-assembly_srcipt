@@ -1,0 +1,244 @@
+#!/bin/bash
+set -euo pipefail
+
+# ============================================================
+# Integrated pipeline:
+# 1) Salmon: index + quant (20 threads)
+# 2) Corset: clustered with 4 groups using Salmon eq_classes
+# 3) Extract clustered transcriptomes (fetchClusterSeqs.py)
+# 4) Bowtie2: build indexes + map reads (22 threads) for rates
+# ============================================================
+
+# -----------------------
+# Global configuration
+# -----------------------
+echo "[START] Pipeline"
+
+S1_BASE="/home/jade/1_sandsmelt/rundrap/out_drap_s1"
+S2_BASE="/home/jade/1_sandsmelt/rundrap/out_drap_s2"
+S3_BASE="/home/jade/1_sandsmelt/rundrap/meta_s3"
+
+SALMON_THREADS=20
+BOWTIE2_THREADS=22
+
+READS_DIR="$S1_BASE"
+SALMON_INDEX_BASE="$S1_BASE"
+SALMON_QUANT_BASE="$S1_BASE/salmon_quant"
+
+BWT2_INDEX_BASE="/home/jade/1_sandsmelt/rundrap/bowtie2_indexes"
+BWT2_MAP_BASE="/home/jade/1_sandsmelt/rundrap/mapping_results"
+
+mkdir -p "$SALMON_QUANT_BASE" "$BWT2_INDEX_BASE" "$BWT2_MAP_BASE"
+
+# Transcriptomes (7 total) and their names
+declare -A TX
+TX["transcripts_fpkm0_s1"]="$S1_BASE/meta_BR/d-cov_filter/transcripts_fpkm_0.fa"
+TX["transcripts_fpkm1_s1"]="$S1_BASE/meta_BR/d-cov_filter/transcripts_fpkm_1.fa"
+TX["transcripts_fpkm0_s2"]="$S2_BASE/transcripts_fpkm_0.fa"
+TX["transcripts_fpkm0.5_s2"]="$S2_BASE/transcripts_fpkm_0.5.fa"
+TX["transcripts_fpkm0_s3"]="$S3_BASE/transcripts_fpkm_0.fa"
+TX["transcripts_fpkm0.5_s3"]="$S3_BASE/transcripts_fpkm_0.5.fa"
+TX["transcripts_fpkm1_s3"]="$S3_BASE/transcripts_fpkm_1.fa"
+
+TX_NAMES=(
+  transcripts_fpkm0_s1
+  transcripts_fpkm1_s1
+  transcripts_fpkm0_s2
+  transcripts_fpkm0.5_s2
+  transcripts_fpkm0_s3
+  transcripts_fpkm0.5_s3
+  transcripts_fpkm1_s3
+)
+
+# Sample order for Corset (-n and -g)
+SAMPLES=(
+  2R 5R 6R 7R 8R 9R 10R   # lone_skin
+  2B 5B 6B 7B 8B 9B 10B   # lone_brain
+  11R 12R 13R 14R 16R 17R 18R   # school_skin
+  11B 12B 13B 14B 16B 17B 18B   # school_brain
+)
+
+NAMES=$(IFS=,; echo "${SAMPLES[*]}")
+GROUPS=$(printf "1,%.0s" {1..7})$(printf "2,%.0s" {1..7})$(printf "3,%.0s" {1..7})$(printf "4,%.0s" {1..7})
+GROUPS=${GROUPS%,}
+
+# ------------------------------------------------
+# Step 1: Salmon indexing and quantification
+# ------------------------------------------------
+echo "[STEP 1] Salmon: Indexing and quantification (threads=$SALMON_THREADS)"
+
+# 1A. Indexing
+for NAME in "${TX_NAMES[@]}"; do
+  FASTA="${TX[$NAME]}"
+  IDX="$SALMON_INDEX_BASE/salmon_index_${NAME}"
+  echo "  [1A] Indexing: $NAME -> $IDX"
+  if [[ -d "$IDX" && -s "$IDX/hash.bin" ]]; then
+    echo "    [SKIP] Index exists: $IDX"
+  else
+    mkdir -p "$IDX"
+    salmon index --threads "$SALMON_THREADS" --index "$IDX" --transcripts "$FASTA"
+    echo "    [DONE] Indexed: $NAME"
+  fi
+done
+echo "  [1A] All indices ready."
+
+# 1B. Quantification
+R1_FILES=(/home/jade/1_sandsmelt/rundrap/out_drap_s1/*/*/*/uf*_1.norm.fq.gz)
+echo "  [1B] Quantification: found ${#R1_FILES[@]} forward read files."
+
+for R1 in "${R1_FILES[@]}"; do
+  [[ -s "$R1" ]] || continue
+  R2=${R1/_1.norm.fq.gz/_2.norm.fq.gz}
+  SAMPLE=$(basename "$R1" _1.norm.fq.gz)
+  echo "    [Sample] $SAMPLE"
+  for NAME in "${TX_NAMES[@]}"; do
+    IDX="$SALMON_INDEX_BASE/salmon_index_${NAME}"
+    OUT="$SALMON_QUANT_BASE/${NAME}/${SAMPLE}"
+    if [[ -d "$OUT" && -s "$OUT/aux_info/eq_classes.txt.gz" ]]; then
+      echo "      [SKIP] ${NAME} already quantified for $SAMPLE"
+      continue
+    fi
+    echo "      [RUN] Salmon quant: $SAMPLE on $NAME"
+    mkdir -p "$OUT"
+    salmon quant --threads "$SALMON_THREADS" --index "$IDX" --libType A \
+      --dumpEq --hardFilter --skipQuant \
+      -1 "$R1" -2 "$R2" \
+      --output "$OUT"
+    if [ -f "$OUT/aux_info/eq_classes.txt.gz" ]; then
+      gunzip -c "$OUT/aux_info/eq_classes.txt.gz" > "$OUT/aux_info/eq_classes.txt"
+      echo "      [OK] Unzipped eq_classes.txt for $SAMPLE on $NAME"
+    fi
+  done
+done
+echo "[STEP 1 DONE] Salmon complete."
+
+# ----------------------------------------
+# Step 2: Corset clustering (grouped)
+# ----------------------------------------
+echo "[STEP 2] Corset: grouped clustering using Salmon eq_classes"
+echo "  [Info] -n: $NAMES"
+echo "  [Info] -g: $GROUPS"
+
+for NAME in "${TX_NAMES[@]}"; do
+  OUTPREFIX="corset_${NAME}"
+  echo "  [2A] Collecting files for $NAME"
+  FILES=()
+  for S in "${SAMPLES[@]}"; do
+    FILES+=("$SALMON_QUANT_BASE/$NAME/${S}_uf${S}/aux_info/eq_classes.txt")
+  done
+  echo "  [2B] Running Corset: prefix=$OUTPREFIX (files=${#FILES[@]})"
+  corset -i salmon_eq_classes -p "$OUTPREFIX" \
+    -n "$NAMES" \
+    -g "$GROUPS" \
+    "${FILES[@]}"
+  echo "  [DONE] Corset finished for $NAME"
+done
+echo "[STEP 2 DONE] Corset complete."
+
+# ---------------------------------------------------------------
+# Step 3: Extract clustered transcriptomes (fetchClusterSeqs.py)
+# ---------------------------------------------------------------
+echo "[STEP 3] Extract clustered transcriptomes"
+
+for NAME in "${TX_NAMES[@]}"; do
+  CLUSTERS="corset_${NAME}-clusters.txt"
+  FASTA="${TX[$NAME]}"
+  OUTFA="$(dirname "$FASTA")/cluster_${NAME}.fa"
+  echo "  [3A] $NAME: clusters=$CLUSTERS, input=$FASTA, output=$OUTFA"
+  if [[ -s "$CLUSTERS" ]]; then
+    python3 /home/jade/Corset-tools/fetchClusterSeqs.py \
+      -i "$FASTA" \
+      -c "$CLUSTERS" \
+      -o "$OUTFA" \
+      -l
+    echo "  [DONE] Extracted clustered FASTA for $NAME"
+  else
+    echo "  [SKIP] No clusters file for $NAME ($CLUSTERS)"
+  fi
+done
+echo "[STEP 3 DONE] Clustered FASTAs ready."
+
+# ------------------------------------------
+# Step 4: Bowtie2 (build indexes + mapping)
+# ------------------------------------------
+echo "[STEP 4] Bowtie2: build indexes + mapping (threads=$BOWTIE2_THREADS)"
+
+# Build list of transcriptomes to map: originals + clustered
+TO_MAP=(
+  "${TX["transcripts_fpkm0_s1"]}"
+  "${TX["transcripts_fpkm1_s1"]}"
+  "${TX["transcripts_fpkm0_s2"]}"
+  "${TX["transcripts_fpkm0.5_s2"]}"
+  "${TX["transcripts_fpkm0_s3"]}"
+  "${TX["transcripts_fpkm0.5_s3"]}"
+  "${TX["transcripts_fpkm1_s3"]}"
+  "$S1_BASE/meta_BR/d-cov_filter/cluster_transcripts_fpkm0_s1.fa"
+  "$S1_BASE/meta_BR/d-cov_filter/cluster_transcripts_fpkm1_s1.fa"
+  "$S2_BASE/cluster_transcripts_fpkm0_s2.fa"
+  "$S2_BASE/cluster_transcripts_fpkm0.5_s2.fa"
+  "$S3_BASE/cluster_transcripts_fpkm0_s3.fa"
+  "$S3_BASE/cluster_transcripts_fpkm0.5_s3.fa"
+  "$S3_BASE/cluster_transcripts_fpkm1_s3.fa"
+)
+
+# 4A. Build Bowtie2 indexes
+echo "  [4A] Building Bowtie2 indexes"
+for FASTA in "${TO_MAP[@]}"; do
+  if [[ ! -s "$FASTA" ]]; then
+    echo "    [WARN] Missing or empty FASTA: $FASTA (skip index)"
+    continue
+  fi
+  NAME=$(echo "$FASTA" | sed 's|/home/jade/1_sandsmelt/rundrap/||; s|/|_|g; s|\.fa$||')
+  IDX_DIR="$BOWTIE2_INDEX_BASE/$NAME"
+  mkdir -p "$IDX_DIR"
+  echo "    [BUILD] $NAME"
+  bowtie2-build "$FASTA" "$IDX_DIR/$NAME"
+  echo "    [DONE] Index built: $NAME"
+done
+echo "  [4A DONE] Index building complete."
+
+# 4B. Mapping
+echo "  [4B] Mapping reads to each transcriptome"
+for FASTA in "${TO_MAP[@]}"; do
+  if [[ ! -s "$FASTA" ]]; then
+    echo "    [SKIP] Mapping for missing FASTA: $FASTA"
+    continue
+  fi
+  NAME=$(echo "$FASTA" | sed 's|/home/jade/1_sandsmelt/rundrap/||; s|/|_|g; s|\.fa$||')
+  IDX_DIR="$BOWTIE2_INDEX_BASE/$NAME"
+  OUTDIR="$BOWTIE2_MAP_BASE/$NAME"
+  mkdir -p "$OUTDIR"
+
+  echo "    [MAP] Target=$NAME"
+  for R1 in "$READS_DIR"/*/*/*/uf*_1.norm.fq.gz; do
+    [[ -s "$R1" ]] || continue
+    R2=${R1/_1.norm.fq.gz/_2.norm.fq.gz}
+    SAMPLE_DIR=$(basename "$(dirname "$R1")")
+    SAMPLE=$(basename "$R1" _1.norm.fq.gz)
+
+    echo "      [RUN] $SAMPLE_DIR ($SAMPLE) -> $NAME"
+    bowtie2 -x "$IDX_DIR/$NAME" \
+      -1 "$R1" \
+      -2 "$R2" \
+      -q -p "$BOWTIE2_THREADS" --sensitive --no-discordant --no-mixed \
+      -S "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}.sam" \
+      2> "$OUTDIR/${SAMPLE_DIR}_${SAMPLE}_bowtie2.txt"
+    echo "      [DONE] $SAMPLE_DIR ($SAMPLE)"
+  done
+  echo "    [MAP DONE] $NAME"
+done
+echo "[STEP 4 DONE] Bowtie2 mapping complete."
+
+# ---------------
+# Summary
+# ---------------
+echo "[SUMMARY]"
+echo " Salmon indices: $SALMON_INDEX_BASE/salmon_index_*"
+echo " Salmon quant:   $SALMON_QUANT_BASE/<transcriptome>/<sample>/"
+echo " Corset outputs: ./corset_* (clusters, counts)"
+echo " Clustered FASTAs placed next to originals (cluster_*.fa)"
+echo " Bowtie2 indexes: $BOWTIE2_INDEX_BASE/<name>/<name>.*"
+echo " Bowtie2 logs:    $BOWTIE2_MAP_BASE/<name>/*_bowtie2.txt"
+echo " Bowtie2 SAMs:    $BOWTIE2_MAP_BASE/<name>/*.sam"
+
+echo "[FINISH] Pipeline complete"
