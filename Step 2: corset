@@ -18,12 +18,7 @@ transcripts_fpkm1_s3 $S3_BASE/transcripts_fpkm_1.fa"
 SAMPLES="2R 5R 6R 7R 8R 9R 10R 2B 5B 6B 7B 8B 9B 10B 11R 12R 13R 14R 16R 17R 18R 11B 12B 13B 14B 16B 17B 18B"
 NAMES=$(printf "%s," $SAMPLES); NAMES=${NAMES%,}
 
-GROUPS=""
-for i in $(seq 7); do GROUPS="${GROUPS}1,"; done
-for i in $(seq 7); do GROUPS="${GROUPS}2,"; done
-for i in $(seq 7); do GROUPS="${GROUPS}3,"; done
-for i in $(seq 7); do GROUPS="${GROUPS}4,"; done
-GROUPS=${GROUPS%,}
+GROUPS="1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4"
 
 printf "%s\n" "$TX_INFO" | while read NAME FASTA; do
   [ -z "$NAME" ] && continue
@@ -32,5 +27,10 @@ printf "%s\n" "$TX_INFO" | while read NAME FASTA; do
   for S in $SAMPLES; do
     FILES="$FILES $SALMON_QUANT_BASE/$NAME/$S/aux_info/eq_classes.txt"
   done
-  corset -i salmon_eq_classes -p "$OUTPREFIX" -n "$NAMES" -g "$GROUPS" $FILES
+  echo "[RUN] Corset for $NAME"
+  corset -i salmon_eq_classes -p "$OUTPREFIX" -n "$NAMES" -g "$GROUPS" $FILES &
 done
+
+# Wait for all backgrounded corset jobs to finish
+wait
+echo "[DONE] All Corset runs completed in parallel."
