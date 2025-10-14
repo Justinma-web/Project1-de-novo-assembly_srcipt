@@ -21,7 +21,8 @@ corset -f true -i salmon_eq_classes -p corset_transcripts_fpkm0_s1 \
 
 echo "[RUN] Corset for transcripts_fpkm1_s1"
 corset -f true -i salmon_eq_classes -p corset_transcripts_fpkm1_s1 \
-  -n "$NAMES" -g "$GROUPS" \
+  -n 2R,5R,6R,7R,8R,9R,10R,2B,5B,6B,7B,8B,9B,10B,11R,12R,13R,14R,16R,17R,18R,11B,12B,13B,14B,16B,17B,18B \
+  -g 1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4 \
   $SALMON_QUANT_BASE/transcripts_fpkm1_s1/*/aux_info/eq_classes.txt &
 
 echo "[RUN] Corset for transcripts_fpkm0_s2"
