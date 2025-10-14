@@ -28,7 +28,7 @@ printf "%s\n" "$TX_INFO" | while read NAME FASTA; do
     FILES="$FILES $SALMON_QUANT_BASE/$NAME/$S/aux_info/eq_classes.txt"
   done
   echo "[RUN] Corset for $NAME"
-  corset -i salmon_eq_classes -p "$OUTPREFIX" -n "$NAMES" -g "$GROUPS" $FILES &
+  corset -i salmon_eq_classes -p "$OUTPREFIX" -n "$NAMES" -g 1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4 $FILES &
 done
 
 # Wait for all backgrounded corset jobs to finish
