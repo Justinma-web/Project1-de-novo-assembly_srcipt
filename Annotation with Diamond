@@ -1,0 +1,16 @@
+
+## Download Swissprot database
+wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+
+## Build DIAMOND database
+diamond makedb --in uniprot_sprot.fasta --db uniprot_sprot
+
+## Align DNA query sequences against a protein reference database
+diamond blastx \
+    -d uniprot_sprot \
+    -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fatranscripts.fa \
+    -o annotation.tsv \
+    -f 6 qseqid sseqid pident length evalue bitscore stitle \
+    -k 1 \
+    --threads 14
+
