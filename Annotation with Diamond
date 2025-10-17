@@ -7,10 +7,11 @@ diamond makedb --in uniprot_sprot.fasta --db uniprot_sprot
 
 ## Align DNA query sequences against a protein reference database
 diamond blastx \
-    -d uniprot_sprot \
+    -d uniprot_sprot.dmnd \
     -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fatranscripts.fa \
-    -o annotation.tsv \
-    -f 6 qseqid sseqid pident length evalue bitscore stitle \
-    -k 1 \
-    --threads 14
-
+    -o sand_smelt_vs_swissprot.tsv \
+    -p 14 \
+    -k 50 \
+    --sensitive \
+    --min-score 40 \
+    -e 1e-5 
