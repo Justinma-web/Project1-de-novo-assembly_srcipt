@@ -11,11 +11,10 @@ diamond blastx \
     -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fa \
     -o sand_smelt_vs_swissprot.tsv \
     -p 14 \
-    -k 50 \
-    --sensitive \
-    --min-score 40 \
+    -k 5 \
+    --ultra-sensitive \
     -e 1e-5 \
-    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle
+    --outfmt 5
 
 ## NOTE
 DIAMOND-fast DIAMOND BLASTX -t 48 -k 250 -min-score 40
