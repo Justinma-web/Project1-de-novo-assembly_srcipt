@@ -16,3 +16,9 @@ diamond blastx \
     --min-score 40 \
     -e 1e-5 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle
+
+## NOTE
+DIAMOND-fast DIAMOND BLASTX -t 48 -k 250 -min-score 40
+DIAMOND-sensitive: DIAMOND BLASTX -t 48 -k 250 -sensitive -min-score 40
+"https://www-nature-com.eproxy.lib.hku.hk/articles/s41597-023-02591-4#Sec10"
+
