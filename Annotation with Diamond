@@ -10,8 +10,8 @@ diamond blastx \
     -d uniprot_sprot.dmnd \
     -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fa \
     -o sand_smelt_vs_swissprot.tsv \
-    -p 14 \
-    -k 5 \
+    --threads 14 \
+    --max-target-seqs \
     --ultra-sensitive \
-    -e 1e-5 \
+    --evalue 1e-5 \
     --outfmt 5
