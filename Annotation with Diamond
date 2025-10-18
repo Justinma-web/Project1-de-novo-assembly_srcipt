@@ -11,7 +11,7 @@ diamond blastx \
     -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fa \
     -o sand_smelt_vs_swissprot.tsv \
     --threads 14 \
-    --max-target-seqs \
+    --max-target-seqs 5 \
     --ultra-sensitive \
     --evalue 1e-5 \
     --outfmt 5
