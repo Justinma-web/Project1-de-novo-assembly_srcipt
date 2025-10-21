@@ -6,12 +6,13 @@ wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase
 ~/Downloads/diamond makedb --in uniprot_sprot.fasta --db uniprot_sprot
 
 ## Align DNA query sequences against a protein reference database
-~/Downloads/diamond blastx \
-    -d uniprot_sprot.dmnd \
-    -q ~/Downloads/selected_transcriptome/cluster_transcripts_fpkm0.5_s3.fa \
-    -o sand_smelt_vs_swissprot.tsv \
-    --threads 14 \
+diamond blastx \
+    -d swissprot.dmnd \
+    -q cluster_transcripts_fpkm0.5_s3.fa \
+    -o sand_smelt_vs_swissprot.xml \
+    --threads 20 \
     --max-target-seqs 5 \
-    --ultra-sensitive \
+    --more-sensitive \
     --evalue 1e-5 \
     --outfmt 5
+
