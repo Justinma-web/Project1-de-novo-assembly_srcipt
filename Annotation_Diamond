@@ -3,9 +3,10 @@
 ###1. Annotation using SwissProt
 ## Download Swissprot database
 wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+unzip uniprot_sprot.fasta.gz
 
 ## Build DIAMOND database
-~/Downloads/diamond makedb --in uniprot_sprot.fasta --db uniprot_sprot
+diamond makedb --in uniprot_sprot.fasta --db swissprot.dmnd
 
 ## Align DNA query sequences against a protein reference database
 diamond blastx \
@@ -34,3 +35,16 @@ seqkit grep -v -f annotated_ids_sws.txt cluster_transcripts_fpkm0.5_s3.fa > unan
 wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.fasta.gz
 gunzip uniprot_trembl.fasta.gz
 
+## Build DIAMOND database
+diamond makedb --in uniprot_trembl.fasta --db trembl --threads 20
+
+## Align DNA query sequences against a protein reference database
+diamond blastx \
+    -d trembl.dmnd \
+    -q unannotated_1.fa \
+    -o sand_smelt_vs_trembl.xml \
+    --threads 20 \
+    --max-target-seqs 5 \
+    --more-sensitive \
+    --evalue 1e-5 \
+    --outfmt 5
