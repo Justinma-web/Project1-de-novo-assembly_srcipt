@@ -39,7 +39,7 @@ gunzip uniprot_trembl.fasta.gz
 diamond makedb --in uniprot_trembl.fasta --db trembl --threads 20
 
 ## Align DNA query sequences against a protein reference database
-diamond blastx \
+/home/jade/diamond blastx \
     -d trembl.dmnd \
     -q unannotated_1.fa \
     -o sand_smelt_vs_trembl.xml \
