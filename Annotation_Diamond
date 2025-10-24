@@ -48,3 +48,6 @@ diamond makedb --in uniprot_trembl.fasta --db trembl --threads 20
     --more-sensitive \
     --evalue 1e-5 \
     --outfmt 5
+
+## Integrate all annotated sequence
+cat sand_smelt_vs_swissprot.xml sand_smelt_vs_trembl.xml > sand_smelt_annoation.xml
