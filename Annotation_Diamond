@@ -49,18 +49,15 @@ diamond makedb --in uniprot_trembl.fasta --db trembl --threads 20
     --evalue 1e-5 \
     --outfmt 5
 
-## Integrate all annotated sequence, 30509 of 48384 contigs have been annotated
-cat sand_smelt_vs_swissprot.xml sand_smelt_vs_trembl.xml > sand_smelt_annoation.xml
-
 ###4. Extract unannotated sequence (Use "blastxml2tab" in this git)
 ## Filter annotated sequences
 python2 /home/jade/common_scripts-master/blastXML2Tab.py \
-    -o sand_smelt_vs_sws_tre.m8 \
+    -o sand_smelt_vs_trembl.m8 \
     -c std \
-    sand_smelt_annoation.xml
+    sand_smelt_vs_trembl.xml
 
-cut -f1 sand_smelt_vs_sws_tre.m8 | sort -u > annotated_ids_sws_tre.txt
-seqkit grep -v -f annotated_ids_sws_tre.txt cluster_transcripts_fpkm0.5_s3.fa > unannotated_2.fa
+cut -f1 sand_smelt_vs_trembl.m8 | sort -u > annotated_ids_tre.txt
+seqkit grep -v -f annotated_ids_tre.txt unannotated_1.fa > unannotated_2.fa
 
 ##5. Annotate the rest but using uniRef90
 wget https://ftp.uniprot.org/pub/databases/uniprot/uniref/uniref90/uniref90.fasta.gz
@@ -81,4 +78,4 @@ gunzip uniref90.fasta.gz
     --outfmt 5
 
 ## Integrate all annotated sequence, 30509 of 48384 contigs have been annotated
-cat sand_smelt_annoation.xml sand_smelt_vs_uniref90.xml > sand_smelt_annoation_all.xml
+xxxxxx
