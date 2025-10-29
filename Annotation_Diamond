@@ -87,16 +87,26 @@ python2 /home/jade/common_scripts-master/blastXML2Tab.py \
 cut -f1 sand_smelt_vs_uniref90.m8 | sort -u > annotated_ids_ur90.txt
 seqkit grep -v -f annotated_ids_ur90.txt unannotated_2.fa > unannotated_3.fa
 
-##5. Annotate the rest but using nr
-wget https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/nr.gz
-gunzip nr.gz
+##5. Annotate the rest using nr
+mkdir -p nr_files
+
+cd nr_files
+
+wget -c ftp://ftp.ncbi.nlm.nih.gov/blast/db/nr.*.tar.gz
+
+for f in nr.*.tar.gz; do
+    tar -xvzf $f
+done
+
+blastdbcmd -db nr -entry all -out nr.fasta -dbtype prot
 
 ## Build DIAMOND database
-/home/jade/diamond makedb --in nr.gz --db nr --threads 20
+/home/jade/diamond makedb --in nr.fasta --db nr --threads 20
 
 ## Align DNA query sequences against a protein reference database
+cd /home/jade/1_schooling_transcriptome_annotation
 /home/jade/diamond blastx \
-    -d nr.dmnd \
+    -d /home/jade/1_schooling_transcriptome_annotation/nr_files/nr.dmnd \
     -q unannotated_3.fa \
     -o sand_smelt_vs_nr.xml \
     --threads 20 \
