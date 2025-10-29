@@ -77,5 +77,33 @@ gunzip uniref90.fasta.gz
     --evalue 1e-5 \
     --outfmt 5
 
-## Integrate all annotated sequence, 30509 of 48384 contigs have been annotated
+###5. Extract unannotated sequence (Use "blastxml2tab" in this git)
+## Filter annotated sequences
+python2 /home/jade/common_scripts-master/blastXML2Tab.py \
+    -o sand_smelt_vs_uniref90.m8 \
+    -c std \
+    sand_smelt_vs_uniref90.xml
+
+cut -f1 sand_smelt_vs_uniref90.m8 | sort -u > annotated_ids_ur90.txt
+seqkit grep -v -f annotated_ids_ur90.txt unannotated_2.fa > unannotated_3.fa
+
+##5. Annotate the rest but using nr
+wget https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/nr.gz
+gunzip nr.gz
+
+## Build DIAMOND database
+/home/jade/diamond makedb --in nr.gz --db nr --threads 20
+
+## Align DNA query sequences against a protein reference database
+/home/jade/diamond blastx \
+    -d nr.dmnd \
+    -q unannotated_3.fa \
+    -o sand_smelt_vs_nr.xml \
+    --threads 20 \
+    --max-target-seqs 5 \
+    --ultra-sensitive \
+    --evalue 1e-5 \
+    --outfmt 5
+
+## Integrate all annotated sequence
 xxxxxx
