@@ -91,10 +91,9 @@ seqkit grep -v -f annotated_ids_ur90.txt unannotated_2.fa > unannotated_3.fa
 mkdir -p nr_files
 cd nr_files
 
-# Download all nr.*.tar.gz files in parallel with aria2c (much faster than wget)
-#    -x 20 = up to 20 connections per file
-#    -j 20 = up to 20 files at once
-aria2c -x 20 -j 20 ftp://ftp.ncbi.nlm.nih.gov/blast/db/nr.*.tar.gz
+# Download all nr.*.tar.gz files in parallel with wget
+seq -w 000 128 | sed 's|^|https://ftp.ncbi.nlm.nih.gov/blast/db/nr.|;s|$|.tar.gz|' > nr_urls.txt
+cat nr_urls.txt | parallel -j 20 "wget -c {}"
 
 # Extract all tarballs in parallel
 ls nr.*.tar.gz | parallel -j 20 'tar -xzf {}'
